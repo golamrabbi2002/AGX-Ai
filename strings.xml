@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">AI OS</string>
+    <string name="title_activity_main">AI OS</string>
+    <string name="package_name">com.golamrabbi.aios</string>
+    <string name="custom_url_scheme">com.golamrabbi.aios</string>
+</resources>

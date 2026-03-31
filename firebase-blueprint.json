@@ -1,0 +1,118 @@
+{
+  "entities": {
+    "inventory": {
+      "title": "Inventory Item",
+      "description": "A product in the merchant's inventory.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique ID for the item." },
+        "name": { "type": "string", "description": "Name of the product." },
+        "stock": { "type": "integer", "description": "Number of units in stock." },
+        "price": { "type": "number", "description": "Price per unit." },
+        "discount": { "type": "number", "description": "Discount percentage (0-100)." },
+        "minPrice": { "type": "number", "description": "Minimum selling price." },
+        "imageUrl": { "type": "string", "description": "URL of the product image." },
+        "uid": { "type": "string", "description": "Owner's user ID." }
+      },
+      "required": ["id", "name", "stock", "price", "uid"]
+    },
+    "transactions": {
+      "title": "Transaction",
+      "description": "A sales record.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique ID for the transaction." },
+        "customer": { "type": "string", "description": "Customer name." },
+        "amount": { "type": "number", "description": "Transaction amount." },
+        "time": { "type": "string", "description": "ISO 8601 timestamp." },
+        "channel": { "type": "string", "description": "Sales channel (e.g., FB, WA)." },
+        "uid": { "type": "string", "description": "Owner's user ID." }
+      },
+      "required": ["id", "customer", "amount", "time", "channel", "uid"]
+    },
+    "socialAccounts": {
+      "title": "Social Account",
+      "description": "A connected social media account.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique ID for the account." },
+        "platform": { "type": "string", "enum": ["Facebook", "WhatsApp", "TikTok", "Instagram", "X", "LinkedIn", "Red X", "YouTube"], "description": "Platform name." },
+        "name": { "type": "string", "description": "Account display name." },
+        "status": { "type": "string", "enum": ["Connected", "Disconnected", "Wrong Login", "Pending"], "description": "Connection status." },
+        "uid": { "type": "string", "description": "Owner's user ID." }
+      },
+      "required": ["id", "platform", "name", "status", "uid"]
+    },
+    "socialActivities": {
+      "title": "Social Activity",
+      "description": "An AI-driven action on social media.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique ID for the activity." },
+        "platform": { "type": "string", "description": "Platform name." },
+        "action": { "type": "string", "enum": ["Post", "Message", "Comment"], "description": "Type of action." },
+        "content": { "type": "string", "description": "Content of the action." },
+        "timestamp": { "type": "string", "description": "Time of action." },
+        "uid": { "type": "string", "description": "Owner's user ID." }
+      },
+      "required": ["platform", "action", "content", "timestamp", "uid"]
+    },
+    "users": {
+      "title": "User Profile",
+      "description": "Merchant profile information.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "User ID." },
+        "displayName": { "type": "string", "description": "User's display name." },
+        "email": { "type": "string", "description": "User's email address." },
+        "photoURL": { "type": "string", "description": "User's profile photo URL." },
+        "role": { "type": "string", "enum": ["admin", "user"], "description": "User role." },
+        "plan": { "type": "string", "enum": ["Free", "Enterprise"], "description": "Subscription plan." },
+        "twoFactorEnabled": { "type": "boolean", "description": "Whether 2FA is enabled." },
+        "biometricEnabled": { "type": "boolean", "description": "Whether biometric login is enabled." }
+      },
+      "required": ["uid", "displayName", "email", "role", "plan"]
+    },
+    "notifications": {
+      "title": "Notification",
+      "description": "System or AI notification.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique ID." },
+        "title": { "type": "string", "description": "Notification title." },
+        "message": { "type": "string", "description": "Notification message." },
+        "type": { "type": "string", "enum": ["info", "success", "warning", "error"], "description": "Type of notification." },
+        "read": { "type": "boolean", "description": "Whether it has been read." },
+        "timestamp": { "type": "string", "description": "ISO timestamp." },
+        "uid": { "type": "string", "description": "Target user ID." }
+      },
+      "required": ["title", "message", "type", "read", "timestamp", "uid"]
+    }
+  },
+  "firestore": {
+    "/inventory/{itemId}": {
+      "schema": "inventory",
+      "description": "Collection of inventory items."
+    },
+    "/transactions/{txId}": {
+      "schema": "transactions",
+      "description": "Collection of sales transactions."
+    },
+    "/socialAccounts/{accId}": {
+      "schema": "socialAccounts",
+      "description": "Collection of connected social accounts."
+    },
+    "/socialActivities/{actId}": {
+      "schema": "socialActivities",
+      "description": "Collection of AI social activities."
+    },
+    "/users/{userId}": {
+      "schema": "users",
+      "description": "Collection of user profiles."
+    },
+    "/notifications/{notifId}": {
+      "schema": "notifications",
+      "description": "Collection of user notifications."
+    }
+  }
+}

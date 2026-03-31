@@ -1,0 +1,234 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: inventory
+    // Document ID: {itemId}
+    // Fields:
+    //   - id: string (required)
+    //   - name: string (required, size < 100)
+    //   - stock: int (required, >= 0)
+    //   - price: number (required, >= 0)
+    //   - discount: number (optional, 0-100)
+    //   - minPrice: number (optional, >= 0)
+    //   - imageUrl: string (optional, url format)
+    //   - uid: string (required, immutable)
+    //
+    // Collection: transactions
+    // Document ID: {txId}
+    // Fields:
+    //   - id: string (required)
+    //   - customer: string (required, size < 100)
+    //   - amount: number (required, >= 0)
+    //   - time: string (required, ISO 8601)
+    //   - channel: string (required, enum)
+    //   - uid: string (required, immutable)
+    //
+    // Collection: socialAccounts
+    // Document ID: {accId}
+    // Fields:
+    //   - id: string (required)
+    //   - platform: string (required, enum)
+    //   - name: string (required, size < 100)
+    //   - status: string (required, enum)
+    //   - uid: string (required, immutable)
+    //
+    // Collection: socialActivities
+    // Document ID: {actId}
+    // Fields:
+    //   - id: string (optional)
+    //   - platform: string (required)
+    //   - action: string (required, enum)
+    //   - content: string (required, size < 500)
+    //   - timestamp: string (required)
+    //   - uid: string (required, immutable)
+    //
+    // Collection: users
+    // Document ID: {userId}
+    // Fields:
+    //   - uid: string (required, immutable)
+    //   - displayName: string (required, size < 100)
+    //   - email: string (required, email format)
+    //   - photoURL: string (optional, url format)
+    //   - role: string (required, enum)
+    //   - plan: string (required, enum)
+    //   - twoFactorEnabled: bool (optional)
+    //   - biometricEnabled: bool (optional)
+    //
+    // Collection: notifications
+    // Document ID: {notifId}
+    // Fields:
+    //   - id: string (optional)
+    //   - title: string (required, size < 100)
+    //   - message: string (required, size < 500)
+    //   - type: string (required, enum)
+    //   - read: bool (required)
+    //   - timestamp: string (required)
+    //   - uid: string (required, immutable)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.uid;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (
+          (request.auth.token.email == "golamrabbi4801@gmail.com" && request.auth.token.email_verified == true) ||
+          (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+        );
+    }
+
+    function isValidEmail(email) {
+      return email is string &&
+        email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isValidUrl(url) {
+      return url is string &&
+        (url.matches("^https://.*") || url.matches("^http://.*"));
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidInventory(data) {
+      return hasRequiredFields(['id', 'name', 'stock', 'price', 'uid']) &&
+             hasOnlyAllowedFields(['id', 'name', 'stock', 'price', 'discount', 'minPrice', 'imageUrl', 'uid']) &&
+             data.id is string &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.stock is int && data.stock >= 0 &&
+             data.price is number && data.price >= 0 &&
+             (!('discount' in data) || (data.discount is number && data.discount >= 0 && data.discount <= 100)) &&
+             (!('minPrice' in data) || (data.minPrice is number && data.minPrice >= 0)) &&
+             (!('imageUrl' in data) || isValidUrl(data.imageUrl)) &&
+             data.uid is string;
+    }
+
+    function isValidTransaction(data) {
+      return hasRequiredFields(['id', 'customer', 'amount', 'time', 'channel', 'uid']) &&
+             hasOnlyAllowedFields(['id', 'customer', 'amount', 'time', 'channel', 'uid']) &&
+             data.id is string &&
+             data.customer is string && data.customer.size() > 0 && data.customer.size() < 100 &&
+             data.amount is number && data.amount >= 0 &&
+             data.time is string &&
+             data.channel in ['FB', 'WA', 'TK', 'IG', 'Facebook', 'WhatsApp', 'TikTok', 'Instagram', 'X', 'LinkedIn', 'Red X', 'YouTube'] &&
+             data.uid is string;
+    }
+
+    function isValidSocialAccount(data) {
+      return hasRequiredFields(['id', 'platform', 'name', 'status', 'uid']) &&
+             hasOnlyAllowedFields(['id', 'platform', 'name', 'status', 'uid']) &&
+             data.id is string &&
+             data.platform in ['Facebook', 'WhatsApp', 'TikTok', 'Instagram', 'X', 'LinkedIn', 'Red X', 'YouTube'] &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.status in ['Connected', 'Disconnected', 'Wrong Login', 'Pending'] &&
+             data.uid is string;
+    }
+
+    function isValidSocialActivity(data) {
+      return hasRequiredFields(['platform', 'action', 'content', 'timestamp', 'uid']) &&
+             hasOnlyAllowedFields(['id', 'platform', 'action', 'content', 'timestamp', 'uid']) &&
+             data.platform is string &&
+             data.action in ['Post', 'Message', 'Comment'] &&
+             data.content is string && data.content.size() > 0 && data.content.size() < 500 &&
+             data.timestamp is string &&
+             data.uid is string;
+    }
+
+    function isValidUser(data) {
+      return hasRequiredFields(['uid', 'displayName', 'email', 'role', 'plan']) &&
+             hasOnlyAllowedFields(['uid', 'displayName', 'email', 'photoURL', 'role', 'plan', 'twoFactorEnabled', 'biometricEnabled']) &&
+             data.uid is string &&
+             data.displayName is string && data.displayName.size() > 0 && data.displayName.size() < 100 &&
+             data.email is string && isValidEmail(data.email) &&
+             (!('photoURL' in data) || isValidUrl(data.photoURL)) &&
+             data.role in ['admin', 'user'] &&
+             data.plan in ['Free', 'Enterprise'] &&
+             (!('twoFactorEnabled' in data) || data.twoFactorEnabled is bool) &&
+             (!('biometricEnabled' in data) || data.biometricEnabled is bool);
+    }
+
+    function isValidNotification(data) {
+      return hasRequiredFields(['title', 'message', 'type', 'read', 'timestamp', 'uid']) &&
+             hasOnlyAllowedFields(['id', 'title', 'message', 'type', 'read', 'timestamp', 'uid']) &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 100 &&
+             data.message is string && data.message.size() > 0 && data.message.size() < 500 &&
+             data.type in ['info', 'success', 'warning', 'error'] &&
+             data.read is bool &&
+             data.timestamp is string &&
+             data.uid is string;
+    }
+
+    // ===============================================================
+    // Match Rules
+    // ===============================================================
+
+    match /inventory/{itemId} {
+      allow read: if isDocOwner() || isAdmin();
+      allow create: if isAuthenticated() && isValidInventory(request.resource.data) && request.resource.data.uid == request.auth.uid;
+      allow update: if isDocOwner() && isValidInventory(request.resource.data) && request.resource.data.uid == resource.data.uid;
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    match /transactions/{txId} {
+      allow read: if isDocOwner() || isAdmin();
+      allow create: if isAuthenticated() && isValidTransaction(request.resource.data) && request.resource.data.uid == request.auth.uid;
+      allow update: if isDocOwner() && isValidTransaction(request.resource.data) && request.resource.data.uid == resource.data.uid;
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    match /socialAccounts/{accId} {
+      allow read: if isDocOwner() || isAdmin();
+      allow create: if isAuthenticated() && isValidSocialAccount(request.resource.data) && request.resource.data.uid == request.auth.uid;
+      allow update: if isDocOwner() && isValidSocialAccount(request.resource.data) && request.resource.data.uid == resource.data.uid;
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    match /socialActivities/{actId} {
+      allow read: if isDocOwner() || isAdmin();
+      allow create: if isAuthenticated() && isValidSocialActivity(request.resource.data) && request.resource.data.uid == request.auth.uid;
+      allow update: if isDocOwner() && isValidSocialActivity(request.resource.data) && request.resource.data.uid == resource.data.uid;
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.role == 'user';
+      allow update: if isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.role == resource.data.role;
+      allow delete: if isAdmin();
+    }
+
+    match /notifications/{notifId} {
+      allow read: if isDocOwner() || isAdmin();
+      allow create: if isAuthenticated() && isValidNotification(request.resource.data) && (request.resource.data.uid == request.auth.uid || isAdmin());
+      allow update: if (isDocOwner() || isAdmin()) && isValidNotification(request.resource.data) && (request.resource.data.uid == resource.data.uid || isAdmin());
+      allow delete: if isDocOwner() || isAdmin();
+    }
+  }
+}
